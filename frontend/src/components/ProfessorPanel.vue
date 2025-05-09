@@ -50,9 +50,81 @@
         </template>
         <template v-else>
           <h2 class="main-title">Añadir material</h2>
-          <div class="add-material-placeholder">
-            <p>Aquí irá el formulario para añadir material y se mostrarán las etiquetas creadas por el administrador.</p>
-          </div>
+          <form class="material-form" @submit.prevent>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Título</label>
+                <input v-model="materialForm.title" type="text" required />
+              </div>
+              <div class="form-group">
+                <label>Descripción</label>
+                <input v-model="materialForm.description" type="text" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Seleccione las etiquetas que describen el material</label>
+              <multiselect
+                v-model="materialForm.tags"
+                :options="etiquetas"
+                :multiple="true"
+                :close-on-select="false"
+                :clear-on-select="false"
+                :preserve-search="true"
+                placeholder="Buscar y seleccionar etiquetas"
+                label="name"
+                track-by="_id"
+              />
+            </div>
+            <div class="form-group">
+              <label>Seleccione el número de dificultad (1 la más baja)</label>
+              <div class="difficulty-row">
+                <label v-for="n in 5" :key="n">
+                  <input type="radio" v-model="materialForm.difficulty" :value="n" required /> {{ n }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Seleccione etiquetas de conocimientos previos necesarios</label>
+              <multiselect
+                v-model="materialForm.prerequisites"
+                :options="etiquetas"
+                :multiple="true"
+                :close-on-select="false"
+                :clear-on-select="false"
+                :preserve-search="true"
+                placeholder="Buscar y seleccionar etiquetas"
+                label="name"
+                track-by="_id"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Link del recurso</label>
+                <input v-model="materialForm.link" type="url" placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label>Subir archivo</label>
+                <input type="file" @change="onFileChange" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Seleccione la ruta a la que pertenecerá</label>
+              <multiselect
+                v-model="materialForm.route"
+                :options="rutas"
+                :multiple="false"
+                placeholder="Buscar o crear ruta"
+                label="name"
+                track-by="_id"
+                :allow-empty="false"
+                :taggable="true"
+                @tag="addNewRoute"
+              />
+            </div>
+            <div class="form-actions">
+              <button class="btn-neon" type="submit">Crear material</button>
+            </div>
+          </form>
         </template>
       </div>
     </main>
@@ -60,11 +132,95 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import Multiselect from 'vue-multiselect';
+import axios from 'axios';
+import 'vue-multiselect/dist/vue-multiselect.min.css';
+
 const activeTab = ref('rutas');
 const selectedRoute = ref(null);
 
-// Mock de rutas y materiales para estructura visual
+const etiquetas = ref([]);
+const rutas = ref([]);
+const loadingTags = ref(false);
+const loadingRutas = ref(false);
+const creatingRoute = ref(false);
+const routeError = ref('');
+
+const materialForm = ref({
+  title: '',
+  description: '',
+  tags: [],
+  difficulty: '',
+  prerequisites: [],
+  link: '',
+  file: null,
+  route: null
+});
+
+async function fetchEtiquetas() {
+  loadingTags.value = true;
+  try {
+    const res = await axios.get('http://localhost:5000/tags/', { withCredentials: true });
+    etiquetas.value = res.data.data || [];
+  } catch (e) {
+    etiquetas.value = [];
+  }
+  loadingTags.value = false;
+}
+
+async function fetchRutas() {
+  loadingRutas.value = true;
+  try {
+    const res = await axios.get('http://localhost:5000/routes/', { withCredentials: true });
+    rutas.value = res.data.data || [];
+  } catch (e) {
+    rutas.value = [];
+  }
+  loadingRutas.value = false;
+}
+
+onMounted(() => {
+  fetchEtiquetas();
+  fetchRutas();
+});
+
+function logout() {
+  window.location.href = '/login';
+}
+function selectRoute(route) {
+  selectedRoute.value = route;
+}
+function goToRutas() {
+  activeTab.value = 'rutas';
+  selectedRoute.value = null;
+}
+function onFileChange(e) {
+  materialForm.value.file = e.target.files[0];
+}
+
+async function addNewRoute(newRouteName) {
+  routeError.value = '';
+  if (!newRouteName) return;
+  creatingRoute.value = true;
+  try {
+    const res = await axios.post('http://localhost:5000/routes/', {
+      name: newRouteName,
+      description: 'Nueva ruta creada desde el formulario.'
+    }, { withCredentials: true });
+    if (res.data && res.data.data && res.data.data.id) {
+      await fetchRutas();
+      // Seleccionar la nueva ruta automáticamente
+      const nueva = rutas.value.find(r => r._id === res.data.data.id);
+      if (nueva) materialForm.value.route = nueva;
+    }
+  } catch (e) {
+    routeError.value = e.response?.data?.message || 'Error al crear ruta';
+  }
+  creatingRoute.value = false;
+}
+
+// ...mockRoutes para la vista de rutas/materiales...
 const mockRoutes = [
   {
     _id: '1',
@@ -86,20 +242,10 @@ const mockRoutes = [
     ]
   }
 ];
-
-function logout() {
-  window.location.href = '/login';
-}
-function selectRoute(route) {
-  selectedRoute.value = route;
-}
-function goToRutas() {
-  activeTab.value = 'rutas';
-  selectedRoute.value = null;
-}
 </script>
 
 <style scoped>
+@import 'vue-multiselect/dist/vue-multiselect.min.css';
 .professor-layout {
   display: flex;
   min-height: 100vh;
@@ -285,6 +431,76 @@ function goToRutas() {
   color: #181818;
   font-size: 1.1rem;
 }
+.material-form {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 0 12px #39ff1433;
+  padding: 2rem 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.form-row {
+  display: flex;
+  gap: 1.2rem;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+.form-group label {
+  color: #ff9100;
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+.material-form input[type="text"],
+.material-form input[type="url"],
+.material-form select {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1.5px solid #39ff14;
+  border-radius: 6px;
+  background: #f7f7f7;
+  color: #181818;
+  font-size: 1rem;
+  outline: none;
+  margin-top: 0.2rem;
+}
+.material-form input[type="file"] {
+  margin-top: 0.5rem;
+}
+.difficulty-row {
+  display: flex;
+  gap: 1.2rem;
+  margin-top: 0.5rem;
+}
+.difficulty-row label {
+  color: #39ff14;
+  font-weight: normal;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.2rem;
+}
+.btn-neon {
+  background: linear-gradient(90deg, #39ff14 60%, #ff9100 100%);
+  color: #181818;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-neon:hover {
+  background: linear-gradient(90deg, #ff9100 60%, #39ff14 100%);
+}
 @media (max-width: 900px) {
   .professor-layout {
     flex-direction: column;
@@ -314,6 +530,16 @@ function goToRutas() {
   .routes-list-compact, .materials-grid {
     flex-direction: column;
     gap: 1rem;
+  }
+}
+@media (max-width: 700px) {
+  .material-form {
+    padding: 1rem 0.5rem;
+    max-width: 99vw;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
 </style> 

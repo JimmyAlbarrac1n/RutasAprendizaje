@@ -26,10 +26,12 @@ def create_app():
     from .views.auth_routes import auth_bp
     from .views.tag_routes import tag_bp
     from .views.material_routes import material_bp
+    from .views.route_routes import route_bp
 
     app.register_blueprint(user_bp, url_prefix='/users')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(tag_bp, url_prefix='/tags')
     app.register_blueprint(material_bp, url_prefix='/materials')
+    app.register_blueprint(route_bp, url_prefix='/routes')
 
     return app
