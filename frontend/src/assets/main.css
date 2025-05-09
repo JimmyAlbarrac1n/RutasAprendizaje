@@ -1,0 +1,52 @@
+@import './base.css';
+
+/* Oculta el botón flotante de Vite Inspector */
+#vue-inspector-toggle, .vi-vite-inspector { display: none !important; }
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #181818;
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: flex;
+    place-items: center;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 0 2rem;
+  }
+}
